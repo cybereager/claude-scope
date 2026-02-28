@@ -1,0 +1,24 @@
+{
+    "configurations": [
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:claude-tracker}",
+            "name": "Debug ClaudeTracker",
+            "target": "ClaudeTracker",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug ClaudeTracker"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:claude-tracker}",
+            "name": "Release ClaudeTracker",
+            "target": "ClaudeTracker",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release ClaudeTracker"
+        }
+    ]
+}
