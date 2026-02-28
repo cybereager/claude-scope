@@ -96,10 +96,10 @@ final class MenuBarManager: NSObject, ObservableObject {
         guard let button = statusItem?.button else { return }
         if isLoading {
             button.title = "◆ …"
-            button.toolTip = "Claude Tracker — loading…"
+            button.toolTip = "ClaudeScope — loading…"
         } else if lastError != nil {
             button.title = "◆ !"
-            button.toolTip = "Claude Tracker — error, click to view"
+            button.toolTip = "ClaudeScope — error, click to view"
         } else if displayMode == .usage {
             let fiveHr  = currentStats.fiveHourRequests
             let weekly  = currentStats.weekRequests
@@ -157,7 +157,7 @@ final class MenuBarManager: NSObject, ObservableObject {
         reloadItem.target = self
         menu.addItem(reloadItem)
         menu.addItem(.separator())
-        let quitItem = NSMenuItem(title: "Quit ClaudeTracker", action: #selector(quitApp), keyEquivalent: "")
+        let quitItem = NSMenuItem(title: "Quit ClaudeScope", action: #selector(quitApp), keyEquivalent: "")
         quitItem.target = self
         menu.addItem(quitItem)
 

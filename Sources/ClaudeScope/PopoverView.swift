@@ -202,7 +202,7 @@ struct PopoverView: View {
                         label: "Weekly",
                         used: manager.currentStats.weekRequests,
                         limit: manager.planType.weeklyLimit,
-                        subtitle: "Resets every Monday"
+                        subtitle: weeklyResetSubtitle
                     )
                     Divider()
                     // Quick stats row
@@ -232,24 +232,58 @@ struct PopoverView: View {
         }
     }
 
+    // MARK: - Reset Time Subtitles
+
     private var fiveHourResetSubtitle: String {
         guard let resets = manager.currentStats.fiveHourWindowResets else {
-            return "No messages in current window"
+            return "No activity in the last 5 hours"
         }
         let diff = resets.timeIntervalSinceNow
-        if diff <= 0 { return "Window reset" }
+        if diff <= 0 {
+            return "Window has reset — counter will clear on next message"
+        }
+        let fmt = DateFormatter()
+        fmt.dateStyle = .none
+        fmt.timeStyle = .short
+        let timeStr = fmt.string(from: resets)
         let h = Int(diff) / 3600
         let m = (Int(diff) % 3600) / 60
-        let timeStr: String = {
-            let fmt = DateFormatter()
-            fmt.dateStyle = .none
-            fmt.timeStyle = .short
-            return fmt.string(from: resets)
-        }()
         if h > 0 {
-            return "Resets at \(timeStr) (in \(h)h \(m)m)"
+            return "Resets at \(timeStr) · in \(h)h \(m)m"
         } else {
-            return "Resets at \(timeStr) (in \(m)m)"
+            return "Resets at \(timeStr) · in \(m)m"
+        }
+    }
+
+    private var weeklyResetSubtitle: String {
+        let calendar = Calendar.current
+        var comps = DateComponents()
+        comps.weekday = 2   // Monday
+        comps.hour    = 0
+        comps.minute  = 0
+        comps.second  = 0
+        guard let nextMonday = calendar.nextDate(
+            after: Date(),
+            matching: comps,
+            matchingPolicy: .nextTime
+        ) else { return "Resets every Monday" }
+
+        let diff = max(0, nextMonday.timeIntervalSinceNow)
+        let d = Int(diff) / 86400
+        let h = (Int(diff) % 86400) / 3600
+        let m = (Int(diff) % 3600) / 60
+
+        let fmt = DateFormatter()
+        fmt.dateStyle = .none
+        fmt.timeStyle = .short
+        let timeStr = fmt.string(from: nextMonday)
+
+        if d > 1 {
+            return "Resets Monday at \(timeStr) · in \(d)d \(h)h"
+        } else if d == 1 {
+            return "Resets tomorrow at \(timeStr) · in \(h)h \(m)m"
+        } else {
+            return "Resets tonight at \(timeStr) · in \(h)h \(m)m"
         }
     }
 

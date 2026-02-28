@@ -1,4 +1,4 @@
-VERSION  := 1.1.0
+VERSION  := 1.2.0
 APP_NAME := ClaudeScope
 BUNDLE   := dist/$(APP_NAME).app
 DMG_NAME := dist/$(APP_NAME)-$(VERSION).dmg
