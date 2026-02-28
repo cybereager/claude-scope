@@ -2,7 +2,7 @@
 
 A lightweight native macOS menu bar app that tracks your [Claude Code](https://claude.ai/code) token usage and costs in real time — no account login required.
 
-![ClaudeTracker menu bar screenshot](https://github.com/cybereager/claude-tracker/assets/placeholder/menubar.png)
+![ClaudeTracker menu bar screenshot](https://i.ibb.co/mF9405X2/image.png)
 
 ---
 
