@@ -1,6 +1,8 @@
-# ClaudeTracker
+# ClaudeScope
+Real-time Usage & Cost Monitoring for Claude Code (macOS Menu Bar App)
 
-A lightweight native macOS menu bar app that tracks your [Claude Code](https://claude.ai/code) token usage and costs in real time — no account login required.
+ClaudeScope is a lightweight, privacy-first macOS menu bar application that provides real-time visibility into your [Claude Code](https://claude.ai/code) token usage and costs without requiring any login, API access, or external services.
+
 
 ![ClaudeTracker menu bar screenshot](https://i.ibb.co/mF9405X2/image.png)
 
