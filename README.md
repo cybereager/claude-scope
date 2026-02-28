@@ -1,10 +1,8 @@
 # ClaudeScope
-Real-time Usage & Cost Monitoring for Claude Code (macOS Menu Bar App)
 
-ClaudeScope is a lightweight, privacy-first macOS menu bar application that provides real-time visibility into your [Claude Code](https://claude.ai/code) token usage and costs without requiring any login, API access, or external services.
+A lightweight native macOS menu bar app that tracks your [Claude Code](https://claude.ai/code) token usage and costs in real time — no account login required.
 
-
-![ClaudeTracker menu bar screenshot](https://i.ibb.co/mF9405X2/image.png)
+![ClaudeScope menu bar screenshot](https://github.com/cybereager/claude-scope/assets/placeholder/menubar.png)
 
 ---
 
@@ -40,8 +38,8 @@ ClaudeScope is a lightweight, privacy-first macOS menu bar application that prov
 
 ### Option A — DMG (recommended)
 
-1. Download `ClaudeTracker-1.0.0.dmg` from the [latest release](https://github.com/cybereager/claude-tracker/releases/latest)
-2. Open the DMG and drag **ClaudeTracker** to your **Applications** folder
+1. Download `ClaudeScope-1.0.0.dmg` from the [latest release](https://github.com/cybereager/claude-scope/releases/latest)
+2. Open the DMG and drag **ClaudeScope** to your **Applications** folder
 3. Launch from Applications — it appears in your menu bar immediately
 
 > **First launch:** macOS may show "unidentified developer" because the app is not notarized.
@@ -50,10 +48,10 @@ ClaudeScope is a lightweight, privacy-first macOS menu bar application that prov
 ### Option B — Build from source
 
 ```bash
-git clone https://github.com/cybereager/claude-tracker.git
-cd claude-tracker
+git clone https://github.com/cybereager/claude-scope.git
+cd claude-scope
 make release     # builds .app + DMG in dist/
-open dist/ClaudeTracker.app
+open dist/ClaudeScope.app
 ```
 
 Requirements: Xcode Command Line Tools (`xcode-select --install`)
@@ -99,7 +97,7 @@ Claude Code stores every conversation turn as a JSONL file under `~/.claude/proj
 }
 ```
 
-ClaudeTracker reads these files with a 64 KB streaming parser, tracks the last parsed byte offset per file, and recomputes totals every 60 seconds without re-reading data it has already processed.
+ClaudeScope reads these files with a 64 KB streaming parser, tracks the last parsed byte offset per file, and recomputes totals every 60 seconds without re-reading data it has already processed.
 
 ### Cost calculation
 
@@ -121,16 +119,16 @@ make clean        # remove build artifacts
 
 The `make release` command:
 1. Compiles with `swift build -c release`
-2. Assembles `dist/ClaudeTracker.app` with the correct Info.plist and icon
+2. Assembles `dist/ClaudeScope.app` with the correct Info.plist and icon
 3. Ad-hoc signs the bundle
-4. Creates `dist/ClaudeTracker-<version>.dmg` with a drag-to-install layout
+4. Creates `dist/ClaudeScope-<version>.dmg` with a drag-to-install layout
 
 ---
 
 ## Project structure
 
 ```
-claude-tracker/
+claude-scope/
 ├── Package.swift
 ├── Makefile
 ├── Resources/
@@ -138,7 +136,7 @@ claude-tracker/
 │   ├── AppIcon.iconset/      # All required macOS icon sizes
 │   └── Info.plist            # LSUIElement=true (no dock icon)
 └── Sources/
-    └── ClaudeTracker/
+    └── ClaudeScope/
         ├── main.swift            # NSApplication entry point
         ├── AppDelegate.swift     # NSApplicationDelegate
         ├── Models.swift          # Data types, ModelKind, Pricing, PlanType
