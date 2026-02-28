@@ -1,4 +1,4 @@
-VERSION  := 1.2.0
+VERSION  := 1.3.0
 APP_NAME := ClaudeScope
 BUNDLE   := dist/$(APP_NAME).app
 DMG_NAME := dist/$(APP_NAME)-$(VERSION).dmg
@@ -26,7 +26,7 @@ dist/$(APP_NAME)-$(VERSION).dmg: $(BUNDLE)
 	@hdiutil create -volname "$(APP_NAME)" \
 	  -srcfolder dist/dmg-staging \
 	  -ov -format UDRW -fs HFS+ dist/temp-rw.dmg > /dev/null
-	@MOUNT_DIR="/Volumes/$(APP_NAME)"; \
+	@MOUNT_DIR="/Volumes/$(APP_NAME)-build"; \
 	 hdiutil attach dist/temp-rw.dmg -mountpoint "$$MOUNT_DIR" -nobrowse -quiet; \
 	 osascript -e 'tell application "Finder" \
 	   to tell disk "$(APP_NAME)" \
@@ -40,7 +40,7 @@ dist/$(APP_NAME)-$(VERSION).dmg: $(BUNDLE)
 	     set position of item "Install $(APP_NAME).command" of container window to {260,280}; \
 	     update without registering applications; \
 	   end tell' 2>/dev/null || true; \
-	 hdiutil detach "$$MOUNT_DIR" -quiet
+	 hdiutil detach "$$MOUNT_DIR" -force -quiet 2>/dev/null || true
 	@hdiutil convert dist/temp-rw.dmg \
 	  -format UDZO -imagekey zlib-level=9 \
 	  -o $(DMG_NAME) > /dev/null

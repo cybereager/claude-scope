@@ -11,6 +11,10 @@ final class MenuBarManager: NSObject, ObservableObject {
     @Published private(set) var isLoading: Bool = true
     @Published private(set) var lastError: String? = nil
 
+    /// Real subscription usage from Claude OAuth API. nil when unavailable or API plan.
+    @Published private(set) var oauthUsage: OAuthUsageData? = nil
+    @Published private(set) var oauthError: String? = nil
+
     @Published var displayMode: DisplayMode = {
         DisplayMode(rawValue: UserDefaults.standard.string(forKey: "displayMode") ?? "") ?? .cost
     }() {
@@ -60,6 +64,7 @@ final class MenuBarManager: NSObject, ObservableObject {
         detectAccount()
         Task {
             await performFullParse()
+            await fetchOAuthUsage()
             startTimer()
         }
     }
@@ -101,17 +106,27 @@ final class MenuBarManager: NSObject, ObservableObject {
             button.title = "◆ !"
             button.toolTip = "ClaudeScope — error, click to view"
         } else if displayMode == .usage {
-            let fiveHr  = currentStats.fiveHourRequests
-            let weekly  = currentStats.weekRequests
-            if let fiveHrLimit = planType.fiveHourLimit,
-               let weeklyLimit = planType.weeklyLimit {
-                let fPct = min(Int(Double(fiveHr) / Double(fiveHrLimit) * 100), 100)
-                let wPct = min(Int(Double(weekly) / Double(weeklyLimit) * 100), 100)
+            if let oauth = oauthUsage,
+               let fiveU = oauth.fiveHourUtilization,
+               let weekU = oauth.weeklyUtilization {
+                // Real data from Claude OAuth API
+                let fPct = min(Int(fiveU * 100), 100)
+                let wPct = min(Int(weekU * 100), 100)
                 button.title = "◆ \(fPct)% | \(wPct)%"
-                button.toolTip = "5-hr session: \(fiveHr)/\(fiveHrLimit) msgs (\(fPct)%)  Weekly: \(weekly)/\(weeklyLimit) msgs (\(wPct)%)"
+                button.toolTip = "5-hr session: \(fPct)%  Weekly: \(wPct)%  (live from Claude API)"
             } else {
-                button.title = "◆ \(fiveHr) msgs"
-                button.toolTip = "Last 5h: \(fiveHr) msgs  Week: \(weekly) msgs"
+                let fiveHr = currentStats.fiveHourRequests
+                let weekly = currentStats.weekRequests
+                if let fiveHrLimit = planType.fiveHourLimit,
+                   let weeklyLimit = planType.weeklyLimit {
+                    let fPct = min(Int(Double(fiveHr) / Double(fiveHrLimit) * 100), 100)
+                    let wPct = min(Int(Double(weekly) / Double(weeklyLimit) * 100), 100)
+                    button.title = "◆ \(fPct)% | \(wPct)%"
+                    button.toolTip = "5-hr session: \(fiveHr)/\(fiveHrLimit) msgs (\(fPct)%)  Weekly: \(weekly)/\(weeklyLimit) msgs (\(wPct)%)"
+                } else {
+                    button.title = "◆ \(fiveHr) msgs"
+                    button.toolTip = "Last 5h: \(fiveHr) msgs  Week: \(weekly) msgs"
+                }
             }
         } else {
             let cost = currentStats.todayCost
@@ -217,11 +232,35 @@ final class MenuBarManager: NSObject, ObservableObject {
         } catch {
             lastError = error.localizedDescription
         }
+        await fetchOAuthUsage()
         updateStatusBarTitle()
     }
 
+    /// Fetches real subscription utilisation from Claude's OAuth API.
+    /// Silently stores the result; errors are surfaced in `oauthError`.
+    private func fetchOAuthUsage() async {
+        // Only fetch when in subscription mode with a non-API plan
+        guard planType.isSubscription else {
+            oauthUsage = nil
+            oauthError = nil
+            return
+        }
+        do {
+            let data = try await ClaudeOAuthFetcher.fetchUsage()
+            oauthUsage = data
+            oauthError = nil
+            updateStatusBarTitle()
+        } catch {
+            oauthError = error.localizedDescription
+            // Keep old oauthUsage data rather than wiping it on transient errors
+        }
+    }
+
     @objc private func reloadAll() {
-        Task { await performFullParse() }
+        Task {
+            await performFullParse()
+            await fetchOAuthUsage()
+        }
     }
 
     @objc private func quitApp() {

@@ -189,21 +189,50 @@ struct PopoverView: View {
         GroupBox {
             VStack(spacing: 16) {
                 if manager.planType.isSubscription {
-                    // 5-hour session bar
+                    let oauth = manager.oauthUsage
+                    let isLive = oauth?.fiveHourUtilization != nil
+
+                    // 5-hour session bar — prefer real OAuth utilisation
+                    let fiveFraction: Double = {
+                        if let u = oauth?.fiveHourUtilization { return min(u, 1.0) }
+                        let used  = manager.currentStats.fiveHourRequests
+                        let limit = manager.planType.fiveHourLimit ?? 1
+                        return min(Double(used) / Double(limit), 1.0)
+                    }()
                     usageBar(
                         label: "5-hr Session",
-                        used: manager.currentStats.fiveHourRequests,
-                        limit: manager.planType.fiveHourLimit,
-                        subtitle: fiveHourResetSubtitle
+                        fraction: fiveFraction,
+                        usedCount: manager.currentStats.fiveHourRequests,
+                        limitCount: manager.planType.fiveHourLimit,
+                        subtitle: fiveHourResetSubtitle,
+                        isLive: isLive
                     )
                     Divider()
+
                     // Weekly bar
+                    let weeklyFraction: Double = {
+                        if let u = oauth?.weeklyUtilization { return min(u, 1.0) }
+                        let used  = manager.currentStats.weekRequests
+                        let limit = manager.planType.weeklyLimit ?? 1
+                        return min(Double(used) / Double(limit), 1.0)
+                    }()
                     usageBar(
                         label: "Weekly",
-                        used: manager.currentStats.weekRequests,
-                        limit: manager.planType.weeklyLimit,
-                        subtitle: weeklyResetSubtitle
+                        fraction: weeklyFraction,
+                        usedCount: manager.currentStats.weekRequests,
+                        limitCount: manager.planType.weeklyLimit,
+                        subtitle: weeklyResetSubtitle,
+                        isLive: oauth?.weeklyUtilization != nil
                     )
+
+                    if let err = manager.oauthError {
+                        Divider()
+                        Text("⚠ \(err)")
+                            .font(.caption2)
+                            .foregroundStyle(.orange)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+
                     Divider()
                     // Quick stats row
                     HStack(spacing: 0) {
@@ -235,12 +264,16 @@ struct PopoverView: View {
     // MARK: - Reset Time Subtitles
 
     private var fiveHourResetSubtitle: String {
-        guard let resets = manager.currentStats.fiveHourWindowResets else {
+        // Prefer real reset time from OAuth API
+        let resets = manager.oauthUsage?.fiveHourResetsAt
+            ?? manager.currentStats.fiveHourWindowResets
+
+        guard let resets else {
             return "No activity in the last 5 hours"
         }
         let diff = resets.timeIntervalSinceNow
         if diff <= 0 {
-            return "Window has reset — counter will clear on next message"
+            return "Window resetting — counter clears on next message"
         }
         let fmt = DateFormatter()
         fmt.dateStyle = .none
@@ -256,6 +289,28 @@ struct PopoverView: View {
     }
 
     private var weeklyResetSubtitle: String {
+        // Prefer real reset time from OAuth API
+        if let resetsAt = manager.oauthUsage?.weeklyResetsAt {
+            let diff = max(0, resetsAt.timeIntervalSinceNow)
+            let fmt = DateFormatter()
+            fmt.dateStyle = .none
+            fmt.timeStyle = .short
+            let timeStr = fmt.string(from: resetsAt)
+            let d = Int(diff) / 86400
+            let h = (Int(diff) % 86400) / 3600
+            let m = (Int(diff) % 3600) / 60
+            if d > 1 {
+                return "Resets \(fmt.string(from: resetsAt).isEmpty ? "soon" : "at \(timeStr)") · in \(d)d \(h)h"
+            } else if d == 1 {
+                return "Resets tomorrow at \(timeStr) · in \(h)h \(m)m"
+            } else if h > 0 {
+                return "Resets today at \(timeStr) · in \(h)h \(m)m"
+            } else {
+                return "Resets at \(timeStr) · in \(m)m"
+            }
+        }
+
+        // Fall back to calendar-computed next Monday
         let calendar = Calendar.current
         var comps = DateComponents()
         comps.weekday = 2   // Monday
@@ -287,17 +342,28 @@ struct PopoverView: View {
         }
     }
 
-    private func usageBar(label: String, used: Int, limit: Int?, subtitle: String) -> some View {
-        let fraction: Double = limit.map { min(Double(used) / Double($0), 1.0) } ?? 0
-        let pct = Int(fraction * 100)
+    private func usageBar(
+        label: String,
+        fraction: Double,
+        usedCount: Int? = nil,
+        limitCount: Int? = nil,
+        subtitle: String,
+        isLive: Bool = false
+    ) -> some View {
+        let pct = Int(min(fraction, 1.0) * 100)
         let barColor: Color = fraction > 0.9 ? .red : fraction > 0.7 ? .orange : .accentColor
-        let limitStr = limit.map { "\($0)" } ?? "—"
 
         return VStack(spacing: 6) {
             HStack(alignment: .firstTextBaseline) {
                 Text(label)
                     .font(.subheadline)
                     .fontWeight(.medium)
+                if isLive {
+                    Image(systemName: "dot.radiowaves.left.and.right")
+                        .font(.caption2)
+                        .foregroundStyle(.green)
+                        .help("Live data from Claude API")
+                }
                 Spacer()
                 Text("\(pct)%")
                     .font(.title2)
@@ -313,16 +379,19 @@ struct PopoverView: View {
                         .frame(height: 8)
                     RoundedRectangle(cornerRadius: 4)
                         .fill(barColor)
-                        .frame(width: max(geo.size.width * fraction, fraction > 0 ? 8 : 0), height: 8)
+                        .frame(width: max(geo.size.width * min(fraction, 1.0), fraction > 0 ? 8 : 0), height: 8)
                         .animation(.easeInOut(duration: 0.4), value: fraction)
                 }
             }
             .frame(height: 8)
             HStack {
-                Text("\(used) / \(limitStr) messages")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .monospacedDigit()
+                if let used = usedCount {
+                    let limitStr = limitCount.map { "\($0)" } ?? "—"
+                    Text(isLive ? "~\(used) / \(limitStr) messages" : "\(used) / \(limitStr) messages")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                }
                 Spacer()
                 Text(subtitle)
                     .font(.caption2)
